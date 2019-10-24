@@ -10,20 +10,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Outline
-
-- Work in pairs, as in Lab 3
-- Create a repository (one per team) & give access to your teammate
-- Explore the Cyclone football data. Use `dplyr` to manipulate data frames and `tidyr` to tidy data up. 
-- Create an R markdown file that contains all code and your exploratory data analysis
-- Submit!
-
-## Github repository
-
-- Owner: Create a GitHub repository called `ds202_lab4`, and give access to the partner.
-- For a refreshment, review the procedures for collaboration for Lab 2. 
-- Collaborate on `team.Rmd` to finish all the questions.
-
 ## Format for submission
 
 - We will check whether or not your lab results are reproducible - i.e. we will knit your `team.Rmd` file. 
@@ -60,6 +46,12 @@ Some abbreviations for the column names can be found in the Glossaries sheet in 
 
 The Cyclone football data involves multiple Excel sheets and is in a somewhat messy form. The following code loads the Defensive sheet into R. **For this lab, also import the Offensive and the Biography sheets.**
 
+```{r, include= FALSE}
+library(reshape2)
+library(dplyr)
+library(tidyr)
+```
+
 ```{r}
 library(readxl)
 defense <- read_excel('cyclonesFootball2018.xlsx', sheet='Defensive')
@@ -83,48 +75,35 @@ defense$Opponent_Opponent <- as.factor(defense$Opponent_Opponent)
 bio$Name <- as.factor(bio$Name)
 ```
 
-```{r}
-is.factor(offense$Name)
-is.factor(offense$Opponent_Opponent)
-is.factor(defense$Name)
-is.factor(defense$Opponent_Opponent)
-is.factor(bio$Name)
-```
-
 2. All offensive and defensive statistics are numerical. The `Weight` column in Biography is also numeric. (Hint: look at `?mutate_at` if you want to save writing some code). 
 
 ```{r}
 offense <- offense %>% mutate_at(c('Receiving_REC', 'Receiving_TD', 'Receiving_YDS', 'Rushing_ATT', 'Rushing_YDS', 'Rushing_TD', 'Passing_CMP-ATT', 'Passing_YDS', 'Passing_TD', 'Passing_INT'), as.numeric)
 ```
-
 ```{r}
 defense <- defense %>% mutate_at(c('Tackles_Solo', 'Tackles_ASST', 'Tackles_TFL', 'Tackles_Sack', 'Turnover_FF', 'Turnover_FR', 'Turnover_INT', 'Pass_QBH', 'Pass_PB'), as.numeric)
 ```
 ```{r}
 bio <- bio %>% mutate_at(c('Weight'), as.numeric)
-bio
 ```
 
 3. Separate the `Height` column into two columns. Make sure the newly created columns are numeric. Then create one column that represents `Height` (Hint: Use a unit that works well). Drop any irrelavant columns from this process.
 ```{r}
 bio <- bio %>% separate(Height, into = c("Height (feet)", "Height (inches)")) %>% mutate_at(c('Height (feet)', 'Height (inches)'), as.numeric)
-bio
+head(bio)
 ```
 ```{r}
 bio<- bio %>% unite("Height", c("Height (feet)", "Height (inches)"), sep = "'", remove = TRUE)
 ```
-
-
 4. By cleaning the three data frames in R, at the end of this step you should have the following three clean data frames: `defClean`, `offClean`, and `bioClean`. Print the structures of these data frames. **Make sure your data types make sense for each variable.**
 ```{r}
 defClean <- data.frame(defense)
-defClean
+head(defClean)
 offClean <- data.frame(offense)
-offClean
+head(offClean)
 bioClean <- data.frame(bio)
-bioClean
+head(bioClean)
 ```
-
 
 ## Part two: Tidying (A)
 For the following questions, work on the cleaned data frames `defClean`, `offClean`, and `bioClean`.
@@ -132,24 +111,20 @@ For the following questions, work on the cleaned data frames `defClean`, `offCle
 1. Reformat the `defClean` data frame into a tidy format using `gather`. The type of statistic (Tackles_Solo, Tackles_ASST, etc) is added as a **new key column named `Statistic`.** 
 
 ```{r}
-head(defClean)
-```
-
-```{r}
 defClean<- defClean %>% gather(key = Statistic , value = value, 3:11)
-defClean
+head(defClean)
 ```
 
 2. Create a histogram for each defensive statistic (make sure to explore different binwidths). Use `facet_wrap` to draw all histograms in a single plot. What defensive skills are rare?
 ```{r}
 library(ggplot2)
-head(defClean)
 ```
-
 ```{r}
 ggplot(defClean, aes(value)) + geom_histogram(binwidth = 0.5) + facet_wrap(~Statistic)
 ```
-The rare defensive skills are turnovers from fumble returns, forced fumbles and interceptions, along with sacks. 
+
+
+The rare defensive skills are turnovers from fumble returns, forced fumbles and interceptions, along with sacks. These defensive skills appear to have a lot fewer occurances than the 5 skills based on the graphs above. 
 
 3. Did ISU have better defense against West Virginia or Kansas State? Answer this question by creating a scatterplot with x-axis being the number of solo tackles (by each player) against West Virginia, and y-axis being that against Kansas State. A large number of solo tackles indicates good defense. 
 
@@ -158,20 +133,21 @@ The rare defensive skills are turnovers from fumble returns, forced fumbles and 
       Look at your data structure. What form do we need our data to have in order to easily answer this question? (hint...`spread`)). 
 
 ```{r}
-WVdef <- defClean %>% filter(Opponent_Opponent == "West Virginia", Statistic == "Tackles_Solo")
-KSdef <- defClean %>% filter(Opponent_Opponent == "Kansas State", Statistic == "Tackles_Solo")
+solotackles <- defClean %>% filter(Statistic == "Tackles_Solo", Opponent_Opponent %in% c("Kansas State", "West Virginia"))
+solotackles <- solotackles %>% spread(key = Opponent_Opponent, value = value)
+na.omit(solotackles)
 ```
 
 ```{r}
-new<- defClean %>% filter(Opponent_Opponent %in% c("Kansas State", "West Virginia"), Statistic == "Tackles_Solo")
-new<- new %>% extract(Opponent_Opponent, c("Kansas State", "West Virginia"), c("Kansas State", "West Virginia"))
+solotackles$ks <- solotackles$`Kansas State`
+solotackles$wv <- solotackles$`West Virginia`
+ggplot(solotackles, aes(ks, wv)) + geom_point() + ggtitle("Kansas State Solo Tackles vs. West Virginia Solo Tackles") +
+  xlab("Kansas State Solo Tackles") +
+  ylab("West Virginia Solo Tackles")
 ```
 
 
-```{r}
-ggplot(new aes(x = WVdef, y = KSdef)) +
-  geom_point
-```
+Kansas State appears to have had a better defense than West Virginia did against ISU. Kansas State had 7 players with over 2.5 solo tackles whereas West Virginia only had two players with over 2.5 solo tackles. 
 
 ## Part two: Tidying  (B)
 Now let's turn our attention to the player biography `bioClean`.
@@ -180,7 +156,8 @@ Now let's turn our attention to the player biography `bioClean`.
 
 ```{r}
 bioClean <- bioClean %>% separate(Hometown, into = c("City", "State"), sep = ",")
-bioClean %>% select(City, State)
+citystate<- bioClean %>% select(City, State)
+head(citystate)
 ```
 
 2. How many players are there from each state?
@@ -193,11 +170,40 @@ table(bioClean$State)
 ## Part three: Joining data frames
 
 1. Find out where the offensive players are from by joining the offensive data and player biography data appropriately.
+```{r}
+offbio <- left_join(offClean, bioClean, by = "Name")
+offbio_distinct <- offbio %>% distinct(Name, State) %>% select(Name, State)
+table(offbio_distinct$State)
+```
 
 
 2. Is there a relationship between the weight of a player and the receiving yards (`Receiving_YDS`)?
+
+```{r}
+ggplot(offbio, aes(Weight, Receiving_YDS)) + geom_point() + ggtitle("Weight and Receiving Yards") +
+  xlab("Weight") +
+  ylab("Receiving Yards")
+```
+
+
+Looking at the graph above there does not appear to be an obvious strong relationship between weight of the player and receiving yards. However it does look as if the lower weights tend to have higher recieving yards, except for the player at 225 lbs.
+
 3. Explore more. Raise a question that can be answered only by looking at two or more data frames. Then answer that question.
 
+Is the weight of a player associated with the number of sacks they have? 
+```{r}
+defbio<- left_join(defClean, bioClean, by = "Name")
+sacks <- defbio %>% filter(Statistic == "Tackles_Sack")
+```
+
+```{r}
+ggplot(sacks, aes(Weight, value)) + geom_point() + ggtitle("Weight and # of Sacks") +
+  xlab("Weight") +
+  ylab("# of Sacks")
+```
+
+
+Based on the graph above the weight of a player does not seem to be associated with the number of sacks a player has. Most of the points are around zero which makes a lot of sense because a player getting a sack is a pretty rare occurance. We also see from the graph that there are only two players with two sacks, but about 14 with one sack.
 ## Tips
 - Agree on a method to clean the dataset with your teammate. Both teammates can then work on the same cleaned version for downstream analysis.
 - Start early to allow more time to collaborate.
