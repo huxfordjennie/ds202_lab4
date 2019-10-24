@@ -130,23 +130,71 @@ bioClean
 For the following questions, work on the cleaned data frames `defClean`, `offClean`, and `bioClean`.
 
 1. Reformat the `defClean` data frame into a tidy format using `gather`. The type of statistic (Tackles_Solo, Tackles_ASST, etc) is added as a **new key column named `Statistic`.** 
+
+```{r}
+head(defClean)
+```
+
+```{r}
+defClean<- defClean %>% gather(key = Statistic , value = value, 3:11)
+defClean
+```
+
 2. Create a histogram for each defensive statistic (make sure to explore different binwidths). Use `facet_wrap` to draw all histograms in a single plot. What defensive skills are rare?
+```{r}
+library(ggplot2)
+head(defClean)
+```
+
+```{r}
+ggplot(defClean, aes(value)) + geom_histogram(binwidth = 0.5) + facet_wrap(~Statistic)
+```
+The rare defensive skills are turnovers from fumble returns, forced fumbles and interceptions, along with sacks. 
+
 3. Did ISU have better defense against West Virginia or Kansas State? Answer this question by creating a scatterplot with x-axis being the number of solo tackles (by each player) against West Virginia, and y-axis being that against Kansas State. A large number of solo tackles indicates good defense. 
 
       (**Hint**: From step 1 we have gathered our `defClean` into 4 columns. \
        Now we only want to focus on solo tackles (hint...`filter`). 
       Look at your data structure. What form do we need our data to have in order to easily answer this question? (hint...`spread`)). 
 
+```{r}
+WVdef <- defClean %>% filter(Opponent_Opponent == "West Virginia", Statistic == "Tackles_Solo")
+KSdef <- defClean %>% filter(Opponent_Opponent == "Kansas State", Statistic == "Tackles_Solo")
+```
+
+```{r}
+new<- defClean %>% filter(Opponent_Opponent %in% c("Kansas State", "West Virginia"), Statistic == "Tackles_Solo")
+new<- new %>% extract(Opponent_Opponent, c("Kansas State", "West Virginia"), c("Kansas State", "West Virginia"))
+```
+
+
+```{r}
+ggplot(new aes(x = WVdef, y = KSdef)) +
+  geom_point
+```
+
 ## Part two: Tidying  (B)
 Now let's turn our attention to the player biography `bioClean`.
 
 1. Separate the `Hometown` column into two columns, namely the city and the state. Print the first few rows of these two columns. (Hint: look at the `sep=` argument of `separate`)
+
+```{r}
+bioClean <- bioClean %>% separate(Hometown, into = c("City", "State"), sep = ",")
+bioClean %>% select(City, State)
+```
+
 2. How many players are there from each state?
+
+```{r}
+table(bioClean$State)
+```
 
 
 ## Part three: Joining data frames
 
 1. Find out where the offensive players are from by joining the offensive data and player biography data appropriately.
+
+
 2. Is there a relationship between the weight of a player and the receiving yards (`Receiving_YDS`)?
 3. Explore more. Raise a question that can be answered only by looking at two or more data frames. Then answer that question.
 
